@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>UPI Fraud Detection</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<h1>UPI Transaction Fraud Detection</h1>
+
+<section id="stats">
+<h2>Dataset Insights & Stats</h2>
+<pre>
+Null values count in dataset: 0
+Outliers in Amount column detected via boxplot method.
+
+Statistical measures for Amount:
+Mean: 5000
+Median: 3200
+Mode: 1500
+Standard Deviation: 2000
+MAE: 1300
+RMSE: 1700
+R² Score: 0.76
+Quartile Deviation: 1800
+</pre>
+</section>
+
+<form id="fraudForm">
+  <label for="amount">Transaction Amount</label>
+  <input type="number" id="amount" name="amount" min="0" required placeholder="Enter transaction amount" />
+  <label for="frequency">Transaction Frequency (per day)</label>
+  <input type="number" id="frequency" name="frequency" min="0" required placeholder="E.g., 3" />
+  <label for="failedAttempts">Failed Transaction Attempts</label>
+  <input type="number" id="failedAttempts" name="failedAttempts" min="0" required placeholder="E.g., 1" />
+  <button type="submit">Check Prediction & Outlier</button>
+</form>
+
+<section id="output">
+<h2>Prediction & Analysis Output</h2>
+<pre id="resultArea">Enter transaction data and press the button to see results here.</pre>
+</section>
+
+<script>
+  // Static dataset stats, update as per your data
+  const mean = 5000;
+  const median = 3200;
+  const mode = 1500;
+  const std_dev = 2000;
+  const mae = 1300;
+  const rmse = 1700;
+  const r2 = 0.76;
+  const quartileDev = 1800;
+  const Q1 = 2000;
+  const Q3 = 5600;
+  const IQR = Q3 - Q1;
+  const lowerBound = Q1 - 1.5 * IQR;
+  const upperBound = Q3 + 1.5 * IQR;
+  const highValueThreshold = mean + 3 * std_dev; // 11000
+
+  // Example linear regression coefficients (train your model and update these for real use)
+  const modelIntercept = 3000;
+  const coefFrequency = 200;
+  const coefFailed = 150;
+
+  function calculateZScore(amount) {
+    return ((amount - mean) / std_dev).toFixed(2);
+  }
+
+  function predictLinearRegression(frequency, failedAttempts) {
+    const predicted = modelIntercept + coefFrequency * frequency + coefFailed * failedAttempts;
+    return predicted.toFixed(2);
+  }
+
+  document.getElementById('fraudForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const amount = parseFloat(e.target.amount.value);
+    const frequency = parseFloat(e.target.frequency.value);
+    const failedAttempts = parseFloat(e.target.failedAttempts.value);
+
+    // Linear regression prediction
+    const predAmount = predictLinearRegression(frequency, failedAttempts);
+
+    // Z-score and outlier detection
+    const zScore = calculateZScore(amount);
+    let zOutlierMsg = "";
+    if (Math.abs(zScore) > 2.5) {
+      zOutlierMsg = "This transaction IS a statistical outlier (|z| > 2.5).";
+    } else {
+      zOutlierMsg = "This transaction is within normal z-score range.";
+    }
+
+    // IQR outlier detection
+    let iqrOutlierMsg = "";
+    if (amount < lowerBound || amount > upperBound) {
+      iqrOutlierMsg = "Amount is an outlier by IQR rule.";
+    } else {
+      iqrOutlierMsg = "Amount is within the IQR range.";
+    }
+
+    // High value detection
+    let highValueMsg = "";
+    if (amount > highValueThreshold) {
+      highValueMsg = "Warning: Amount exceeds high value threshold, suspicious.";
+    } else {
+      highValueMsg = "Amount does not exceed high value threshold.";
+    }
+
+    // Output summary
+    let resultText = `Transaction Amount Entered: ${amount}\n`;
+    resultText += `Transaction Frequency: ${frequency} per day\n`;
+    resultText += `Failed Attempts: ${failedAttempts}\n\n`;
+
+    resultText += `===== Statistical Predictions =====\n`;
+    resultText += `Mean: ${mean}\nMedian: ${median}\nMode: ${mode}\nStandard Deviation: ${std_dev}\nQuartile Deviation: ${quartileDev}\n`;
+    resultText += `Z-score: ${zScore}\n${zOutlierMsg}\n`;
+    resultText += `IQR (Interquartile Range): ${IQR}\nLower Bound: ${lowerBound}\nUpper Bound: ${upperBound}\n${iqrOutlierMsg}\n`;
+    resultText += `High Value Threshold: ${highValueThreshold}\n${highValueMsg}\n\n`;
+
+    resultText += `===== Linear Regression Model Prediction =====\n`;
+    resultText += `Predicted Amount (Based on Model): ${predAmount}\n\n`;
+
+    resultText += `Model Evaluation Metrics\nMAE: ${mae}\nRMSE: ${rmse}\nR² Score: ${r2}\n`;
+
+    document.getElementById('resultArea').textContent = resultText;
+  });
+</script>
+</body>
+</html>
